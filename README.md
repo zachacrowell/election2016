@@ -14,6 +14,7 @@ provided to allow for reproduduction.
 
 Specifically for the 2012 Nytrank variable, the code to generate: 
 
+```
 ## Nytrank http://nyti.ms/2k1WWFM
 ### Rank Vars
 library("data.table")
@@ -32,11 +33,6 @@ dt$u3rank[is.na(dt$u3rank)] <- 0
 dt$mhirank[is.na(dt$mhirank)] <- 0
 #dt$obeserank[is.na(dt$obeserank)] <- 0
 
-### Rank Check
-table(((as.numeric((dt$edrank!=0))) + (as.numeric((dt$u3rank!=0))) +
-         (as.numeric((dt$disrank!=0))) + (as.numeric((dt$lerank!=0))) +
-         (as.numeric((dt$mhirank!=0))) + (as.numeric((dt$obeserank!=0)))))
-
 ## Combine
 dt$nytrank <- (dt$edrank + dt$u3rank + dt$disrank
                     + dt$lerank + dt$mhirank + dt$obeserank)/
@@ -44,6 +40,7 @@ dt$nytrank <- (dt$edrank + dt$u3rank + dt$disrank
      (as.numeric((dt$disrank!=0))) + (as.numeric((dt$lerank!=0))) +
      (as.numeric((dt$mhirank!=0))) + (as.numeric((dt$obeserank!=0)))
   )
+  ```
   
-  In addition to the codebook, two analysis files are provided to provide instructive examples of using the dataset. 
-  A few rough plots of the data using mapinseconds.com are also provided.
+ In addition to the codebook, two analysis files are provided to provide instructive examples of using the dataset. 
+ A few rough plots of the data using mapinseconds.com are also provided.
