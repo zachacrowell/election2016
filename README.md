@@ -44,4 +44,5 @@ dt$nytrank <- (dt$edrank + dt$u3rank + dt$disrank
      (as.numeric((dt$mhirank!=0))) + (as.numeric((dt$obeserank!=0)))
   )
   
-  In addition to the codebook, two analysis files are provided to provide instructive examples of using the dataset.
+  In addition to the codebook, two analysis files are provided to provide instructive examples of using the dataset. 
+  A few rough plots of the data using mapinseconds.com are also provided.
