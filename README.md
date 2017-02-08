@@ -1,4 +1,5 @@
 # election2016
+The primary dataset can be found in /data/input/election_county2016.csv
 
 See Codebook in /data/input/codebook_election.xlsx for variable definitions. 
 
@@ -11,7 +12,7 @@ the Kansas senate race are similarily missing.
 For constructed variables (e.g. racial diversity), descriptive definitions are in the Codebook. In general, enough detail is
 provided to allow for reproduduction.
 
-Specifically for the 2012 Nytrank variable, The code to generate: 
+Specifically for the 2012 Nytrank variable, the code to generate: 
 
 ## Nytrank http://nyti.ms/2k1WWFM
 ### Rank Vars
