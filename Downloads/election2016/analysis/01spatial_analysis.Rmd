@@ -1,0 +1,199 @@
+---
+title: "2016 Election: County-Level Spatial Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '~/election2016/data/input/', echo = TRUE)
+```
+
+```{r config, echo = F}
+# Config and Load Data
+suppressPackageStartupMessages(library("sandwich"))
+suppressPackageStartupMessages(library("lmtest"))
+suppressPackageStartupMessages(library("maps"))
+suppressPackageStartupMessages(library("maptools"))
+suppressPackageStartupMessages(library("spatial"))
+suppressPackageStartupMessages(library("spdep"))
+suppressPackageStartupMessages(library("splm"))
+suppressPackageStartupMessages(library("raster"))
+options(scipen = 0)
+df <- read.csv("election_county2016.csv", header = T)
+
+## Prep data
+indvars <-
+  c(
+    "margin16",
+    "race_black15",
+    "race_hispanic15",
+    "race_aapi15",
+    "race_mixed15",
+    "race_native_american15",
+    "race_other15",
+    "race_diversity15",
+    "nonwhite_growth15",
+    "ed_highschool15",
+    "ed_some_college15",
+    "ed_associates15",
+    "ed_college15",
+    "ed_grad15",
+    "grad2",
+    "workingclasswhite15",
+    "born_instate",
+    "born_outstate",
+    "born_outus",
+    "pop_growth",
+    "u3oct16",
+    "u3_growth",
+    "hh_inc_growth",
+    "gini15",
+    "le10",
+    "mort_injury",
+    "disability",
+    "uninsured15",
+    "uninsur_growth",
+    "vcr14",
+    "pcr14",
+    "veteran",
+    "age_child",
+    "age_18t24",
+    "age_retiree",
+    "female",
+    "wkid_cmarried15",
+    "wkid_sfather15",
+    "wkid_smother15",
+    "wokid_married",
+    "wokid_married15",
+    "rel_cathorth",
+    "rel_evan",
+    "rel_none",
+    "rel_lds",
+    "rel_other",
+    "rel_diversity",
+    "market_services",
+    "market_sales",
+    "market_resources",
+    "market_production",
+    "market_diversity",
+    "hh_income15",
+    "pop_density15",
+    "overdose14",
+    "state",
+    "obese11", 
+    "exer_suf11",
+    "exer_insuf11",
+    "alch_heavy",
+    "alch_light",
+    "smoke_daily",
+    "smoke_nondaily",
+    "combined_fips"
+  )
+
+df_map <- df[, names(df) %in% indvars]
+df_map <- df_map[complete.cases(df_map),]
+```
+
+```{r data prep}
+#Load Shape Files
+## http://www2.census.gov/geo/tiger/PREVGENZ/co/co00shp/co99_d00_shp.zip
+counties <- readShapePoly("co99_d00.shp")  # county shapefiles
+counties <-
+  subset(counties,!(counties$STATE %in% c("02", "15", "72")))
+counties$combined_fips <-
+  as.numeric(as.character(counties$STATE)) * 1000 +
+  as.numeric(as.character(counties$COUNTY))
+
+# Attach df to cc data
+cc <- raster::aggregate(counties, "combined_fips")
+cc@data <-
+  data.frame(cc@data, df_map[match(cc@data[, "combined_fips"],
+                                   df_map[, "combined_fips"]), ])
+
+# Create Weights
+nb_w <- spdep::poly2nb(cc)
+nbqw <- nb2listw(nb_w, zero.policy = TRUE) # weights matrix
+```
+
+```{r spatial lm_tests}
+# Regression
+ols <-
+  lm(
+    margin16 ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = cc
+  )
+
+# LM Tests for spatially correlated errors
+spattests <-
+  lm.LMtests(ols,
+             listw = nbqw,
+             test = "all",
+             zero.policy = T)
+summary(spattests)
+```
+
+```{r spatial models}
+# Spatial models
+## SEM Spatial Lags (i.e. fixed effects: area effects):
+z16fe <-
+  lagsarlm(
+    margin16 ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = cc,
+    listw = nbqw,
+    zero.policy = T
+  )
+
+## SDM Durbin Model (i.e. mixed effects: area and neighbor effects)
+z16mx <-
+  lagsarlm(
+    margin16 ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = cc,
+    listw = nbqw,
+    zero.policy = T,
+    type = "mixed"
+  )
+```
+
+```{r summary results}
+# Results
+## SEM: Betas and SEs consistent w/ z16.
+summary(z16fe)
+
+## SDM: Evidence of neighbor effects for race vars but at cost of noisey SEs.
+summary(z16mx)
+```

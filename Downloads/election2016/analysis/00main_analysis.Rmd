@@ -1,0 +1,429 @@
+---
+title: "2016 Election: County-Level Observational Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '~/election2016/data/', echo = TRUE)
+```
+
+```{r config, echo = F}
+# Config and Load Data
+suppressPackageStartupMessages(library("plyr"))
+suppressPackageStartupMessages(library("sandwich"))
+suppressPackageStartupMessages(library("lmtest"))
+options(scipen = 0)
+df <- read.csv("input/election_county2016.csv", header = T)
+```
+
+```{r newvars}
+# New Vars
+df$turnout16 <- df$totalvotes / df$vap14
+df$turnout16[df$turnout16 >= 1] <- 1
+df$turnout12 <- df$total_votes_2012 / df$vap10
+df$turnout12[df$turnout12 >= 1] <- 1
+df$net_turnout <- df$turnout16 - df$turnout12
+df$eturnout16 <- (df$clinton + df$trump) / df$vap14
+df$eturnout16[df$eturnout16 >= 1] <- 1
+df$eturnout12 <- (df$votes_dem_2012 + df$votes_gop_2012) / df$vap10
+df$eturnout12[df$eturnout12 >= 1] <- 1
+df$net_eturnout <- df$eturnout16 - df$eturnout12
+df$stein_share <- df$stein / df$totalvotes
+
+```
+
+```{r regressions}
+# Regressions
+## 2016
+z16 <-
+  glm(
+    margin16 ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+## 2016 white*ed
+df$grad2 <- df$ed_grad15 ^ 2
+z16w <-
+  glm(
+    margin16 ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + grad2 +  workingclasswhite15 +
+      born_instate + born_outstate + born_outus + pop_growth + u3oct16 +
+      u3_growth + log(hh_income15) + hh_inc_growth + gini15 + uninsured15 +
+      uninsur_growth + disability + le10 + obese11 + exer_suf11 + exer_insuf11 +
+      alch_heavy + alch_light + smoke_daily + smoke_nondaily + mort_injury +
+      vcr14 + pcr14 + veteran + female + age_child + age_18t24 + age_retiree +
+      wkid_cmarried15 + wkid_sfather15 + wkid_smother15 + wokid_married15 +
+      rel_cathorth + rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+## 2016 + Primary
+z16p <- glm(
+  margin16 ~ clinton_sharep + trump_sharep +
+    race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+    race_native_american15 + race_other15 + race_diversity15 +
+    nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+    ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+    born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+    hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+    le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+    smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+    female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+    wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+    rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+    market_services + market_sales + market_resources + market_production +
+    market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+  data = df
+)
+
+
+## 2012
+z12 <- glm(
+  margin12 ~ born_instate +  born_outstate + born_outus + log(hh_income12) +
+    unemp + gini12 + pcr14 + vcr14 + le10 + mort_injury + disability +
+    uninsured + veteran + age_child + age_18t24 + age_retiree + female +
+    married_now + rel_cathorth + rel_evan + rel_none + rel_lds + rel_other +
+    rel_diversity + market_services + market_sales + market_resources +
+    market_production + market_diversity + race_black + race_aapi +
+    race_native_american + race_hispanic + race_other + race_mixed +
+    race_diversity + nonwhite_growth + ed_highschool + ed_some_college +
+    ed_associates + ed_college + ed_grad + log(pop_density10) + obese11 +
+    exer_suf11 + exer_insuf11 + alch_heavy + alch_light + smoke_daily +
+    smoke_nondaily + overdose12 + as.factor(state),
+  data = df
+)
+
+## Stein
+s16p <- glm(
+  stein_share ~ clinton_sharep + trump_sharep +
+    race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+    race_native_american15 + race_other15 + race_diversity15 +
+    nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+    ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+    born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+    hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+    le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+    smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+    female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+    wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+    rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+    market_services + market_sales + market_resources + market_production +
+    market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+  data = df
+)
+
+
+## Turnout Shift
+t16 <-
+  glm(
+    net_turnout ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+t16e <-
+  glm(
+    net_eturnout ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+## Primary
+c16 <-
+  glm(
+    clinton_sharep ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+tr16 <-
+  glm(
+    trump_sharep ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+## w/ margin12
+c12 <-
+  glm(
+    clinton_sharep ~ margin12 +
+      race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+tr12 <-
+  glm(
+    trump_sharep ~ margin12 +
+      race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+      race_native_american15 + race_other15 + race_diversity15 +
+      nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+      ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+      born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+      hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+      le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+      smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+      female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+      wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+      rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+      market_services + market_sales + market_resources + market_production +
+      market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+    data = df
+  )
+
+# Ticket Splitting Senate
+df$ticket_split <- df$margin16-df$margin_sen
+sen16 <- glm(
+  ticket_split ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+    race_native_american15 + race_other15 + race_diversity15 +
+    nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+    ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+    born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+    hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+    le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+    smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+    female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+    wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+    rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+    market_services + market_sales + market_resources + market_production +
+    market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+  data = df
+)
+
+z16sen <- glm(
+  margin16 ~ margin_sen + race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+    race_native_american15 + race_other15 + race_diversity15 +
+    nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+    ed_associates15 + ed_college15 + ed_grad15 + born_instate + born_outstate +
+    born_outus + pop_growth + u3oct16 + u3_growth + log(hh_income15) +
+    hh_inc_growth + gini15 + uninsured15 +  uninsur_growth + disability +
+    le10 + obese11 + exer_suf11 + exer_insuf11 + alch_heavy + alch_light +
+    smoke_daily + smoke_nondaily + mort_injury + vcr14 + pcr14 + veteran +
+    female +  age_child + age_18t24 + age_retiree + wkid_cmarried15 +
+    wkid_sfather15 + wkid_smother15 + wokid_married15 + rel_cathorth +
+    rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+    market_services + market_sales + market_resources + market_production +
+    market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+  data = df
+)
+```
+
+```{r summary results}
+# Tests
+## 2016 Consistent with Right Wing Populism thesis, not w/ economic anxiety.
+coeftest(z16, vcovHC(z16, type = "HC1"))
+
+### Interaction Terms for ed adds neglibile predictive power.
+coeftest(z16w, vcovHC(z16w, type = "HC1"))
+
+### Primary shares sig. but at cost of ~400 obs.
+coeftest(z16p, vcovHC(z16p, type = "HC1"))
+
+## 2012: A mildly less polorized version of 2016
+coeftest(z12, vcovHC(z12, type = "HC1"))
+
+## Stein Share: consistent w/ berniebro effect. Especially w/ z16p in context.
+coeftest(s16p, vcovHC(s16p, type = "HC1"))
+
+## Turnout
+### Black-, Immigrant+, injury-, mormons-, market_diversity+.
+coeftest(t16, vcovHC(t16, type = "HC1"))
+
+### Same story w/ effective turnout ((clinton + trump)/VAP).
+coeftest(t16e, vcovHC(t16e, type = "HC1"))
+
+## Primary:
+### D: Ref on Obama and Socialism?
+coeftest(c16, vcovHC(c16, type = "HC1"))
+
+### R: Consisent w/ RWP thesis:
+### Catholics + None, <ed, rural, demo backlash, >age, vets, >U3, <le, inj.
+coeftest(tr16, vcovHC(tr16, type = "HC1"))
+
+### 2012 Margin doesn't improve primary models. Only sig. for Dems.
+coeftest(c12, vcovHC(c12, type = "HC1"))
+coeftest(tr12, vcovHC(tr12, type = "HC1"))
+
+### Ticket Spliting (Clinton Margin - Senate Margin):
+# Clinton better w/ minority, urban, protestant areas 
+coeftest(sen16, vcovHC(sen16, type = "HC1"))
+
+# Ticket Spliting (Clinton Margin Holding Senate Margin Constant): 
+# Similar story + single, working age + injury (gun proxy) + poor areas
+coeftest(z16sen, vcovHC(z16sen, type = "HC1"))
+```
+
+```{r resid_prep, echo = F}
+## Prep data
+indvars <-
+  c(
+    "margin16",
+    "race_black15",
+    "race_hispanic15",
+    "race_aapi15",
+    "race_mixed15",
+    "race_native_american15",
+    "race_other15",
+    "race_diversity15",
+    "nonwhite_growth15",
+    "ed_highschool15",
+    "ed_some_college15",
+    "ed_associates15",
+    "ed_college15",
+    "ed_grad15",
+    "grad2",
+    "workingclasswhite15",
+    "born_instate",
+    "born_outstate",
+    "born_outus",
+    "pop_growth",
+    "u3oct16",
+    "u3_growth",
+    "hh_inc_growth",
+    "gini15",
+    "le10",
+    "mort_injury",
+    "disability",
+    "uninsured15",
+    "uninsur_growth",
+    "vcr14",
+    "pcr14",
+    "veteran",
+    "age_child",
+    "age_18t24",
+    "age_retiree",
+    "female",
+    "wkid_cmarried15",
+    "wkid_sfather15",
+    "wkid_smother15",
+    "wokid_married",
+    "wokid_married15",
+    "rel_cathorth",
+    "rel_evan",
+    "rel_none",
+    "rel_lds",
+    "rel_other",
+    "rel_diversity",
+    "market_services",
+    "market_sales",
+    "market_resources",
+    "market_production",
+    "market_diversity",
+    "hh_income15",
+    "pop_density15",
+    "overdose14",
+    "state",
+    "obese11", 
+    "exer_suf11",
+    "exer_insuf11",
+    "alch_heavy",
+    "alch_light",
+    "smoke_daily",
+    "smoke_nondaily",
+    "combined_fips"
+  )
+
+df_map <- df[, names(df) %in% indvars]
+df_map <- df_map[complete.cases(df_map), ]
+```
+
+```{r resid analysis}
+# Resid Analysis: Visualizing Spatial Dependency
+
+## Using z16w as model.
+m16 <- glm(
+  margin16 ~ race_black15 + race_hispanic15 + race_aapi15 + race_mixed15 +
+    race_native_american15 + race_other15 + race_diversity15 +
+    nonwhite_growth15 + ed_highschool15 + ed_some_college15 +
+    ed_associates15 + ed_college15 + ed_grad15 + grad2 +  workingclasswhite15 +
+    born_instate + born_outstate + born_outus + pop_growth + u3oct16 +
+    u3_growth + log(hh_income15) + hh_inc_growth + gini15 + uninsured15 +
+    uninsur_growth + disability + le10 + obese11 + exer_suf11 + exer_insuf11 +
+    alch_heavy + alch_light + smoke_daily + smoke_nondaily + mort_injury +
+    vcr14 + pcr14 + veteran + female + age_child + age_18t24 + age_retiree +
+    wkid_cmarried15 + wkid_sfather15 + wkid_smother15 + wokid_married15 +
+    rel_cathorth + rel_evan + rel_none + rel_lds + rel_other + rel_diversity +
+    market_services + market_sales + market_resources + market_production +
+    market_diversity + log(pop_density15) + overdose14 + as.factor(state),
+  data = df_map
+)
+
+## Obtain Resids
+resid_map <- as.data.frame(cbind(df_map$combined_fips, resid(m16)))
+resid_map <-
+  plyr::rename(resid_map, c("V1" = "fips5", "V2" = "resid"))
+
+## Export for Resid Map
+write.csv(resid_map, "output/resid_map.csv", row.names = F)
+```
